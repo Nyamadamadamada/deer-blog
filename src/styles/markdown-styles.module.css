@@ -1,0 +1,133 @@
+.markdown {
+  @apply text-lg leading-relaxed;
+  font-family: -apple-system, 'BlinkMacSystemFont', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans',
+    Meiryo, sans-serif, 'Segoe UI Emoji';
+  color: #000000d1;
+}
+
+.markdown p,
+.markdown ul,
+.markdown ol,
+.markdown blockquote {
+  @apply my-6 text-base leading-7;
+}
+
+.markdown h2 {
+  @apply mt-12 mb-2 pb-1 leading-snug font-bold border-b border-gray-300;
+  font-size: 1.5rem;
+}
+
+.markdown h3 {
+  @apply mt-10 mb-4 leading-snug font-bold;
+  font-size: 1.2rem;
+}
+
+.markdown h4 {
+  @apply text-xl mt-8 mb-2 leading-snug font-bold;
+  font-size: 1.1rem;
+}
+
+.markdown blockquote {
+  font-size: 0.9rem;
+  position: relative;
+  padding: 35px 15px 10px 15px;
+  box-sizing: border-box;
+  background: #f1f1f1;
+  color: #3b3a3a;
+  border-left: 4px solid #6c9647;
+  font-style: italic;
+  @apply shadow-sm;
+}
+
+.markdown blockquote:before {
+  display: inline-block;
+  position: absolute;
+  top: 10px;
+  left: 15px;
+  content: '“';
+  font-family: FontAwesome;
+  color: #6c9647;
+  font-size: 36px;
+  line-height: 1;
+  font-weight: 900;
+}
+
+.markdown blockquote p {
+  padding: 0;
+  margin: 7px 0;
+  line-height: 1.9;
+}
+
+.markdown blockquote cite {
+  display: block;
+  text-align: right;
+  color: #888888;
+  font-size: 0.9rem;
+}
+
+.markdown a {
+  @apply font-thin text-blue-600 dark:text-blue-500 hover:underline;
+}
+
+.markdown ul {
+  padding: 0.5em 1em 0.5em 2.3rem;
+  margin-top: 0rem;
+  margin-bottom: 0rem;
+  position: relative;
+}
+
+.markdown ul li {
+  line-height: 1.5;
+  padding: 0.5em 0;
+  list-style-type: none !important; /*ポチ消す*/
+}
+
+.markdown ul li:before {
+  font-family: 'Font Awesome 5 Free';
+  content: '・';
+  position: absolute;
+  left: 1rem; /*左端からのアイコンまで*/
+  color: #ffb03f; /*アイコン色*/
+}
+
+.markdown ol {
+  counter-reset: number; /*数字をリセット*/
+  list-style-type: none !important; /*数字を一旦消す*/
+  padding: 0.3em 0.8rem;
+}
+.markdown ol li {
+  border-bottom: dashed 1px orange;
+  position: relative;
+  padding: 0.5em 0.5em 0.5em 30px;
+  line-height: 1.5rem;
+}
+.markdown ol li:before {
+  /* 以下数字をつける */
+  position: absolute;
+  counter-increment: number;
+  content: counter(number);
+  /*数字のデザイン変える*/
+  display: inline-block;
+  background: #ffb107;
+  color: white;
+  font-family: 'Avenir', 'Arial Black', 'Arial', sans-serif;
+  font-weight: bold;
+  font-size: 15px;
+  border-radius: 50%;
+  left: 0;
+  width: 25px;
+  height: 25px;
+  line-height: 25px;
+  text-align: center;
+  /*以下 上下中央寄せのため*/
+  top: 50%;
+  -webkit-transform: translateY(-50%);
+  transform: translateY(-50%);
+}
+.markdown ol li:last-of-type {
+  border-bottom: none; /*最後のliの線だけ消す*/
+}
+
+.markdown img {
+  margin-bottom: 60px;
+}
