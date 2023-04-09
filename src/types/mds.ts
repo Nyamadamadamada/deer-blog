@@ -1,3 +1,4 @@
+// eslint-disable-next-line import/named
 import { MDXRemoteSerializeResult } from 'next-mdx-remote';
 
 export type Frontmatter = {
