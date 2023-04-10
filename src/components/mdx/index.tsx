@@ -1,10 +1,14 @@
+import Image from 'next/image';
+import CodeBlockFilename from '@/components/code-block-filename';
+import PointBlock from '@/components/point-block';
+import TopAnchorLink from '@/components/top-anchor-link';
+
 export const components: {
   [key: string]: any;
 } = {
-  p: (props: any) => (
-    <p
-      style={{ color: "red", lineHeight: "1.75rem", fontSize: "15px" }}
-      {...props}
-    />
-  ),
+  div: (props: any) => <div {...props} />,
+  TopAnchorLink,
+  CodeBlockFilename,
+  PointBlock,
+  Image,
 };

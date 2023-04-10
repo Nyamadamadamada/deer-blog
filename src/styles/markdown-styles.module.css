@@ -131,3 +131,11 @@
 .markdown img {
   margin-bottom: 60px;
 }
+
+.markdown p code {
+  padding: 0.2em 0.4em;
+  background: #215aa012;
+  font-size: 0.85em;
+  border-radius: 4px;
+  vertical-align: 0.08em;
+}

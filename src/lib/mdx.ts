@@ -6,10 +6,9 @@ import { serialize } from 'next-mdx-remote/serialize';
 import rehypeHighlight from 'rehype-highlight';
 import { Frontmatter, FrontmatterWithPath, MdxSource } from '@/types/mds';
 
-export const resolvePath = (...paths: string[]) => path.resolve(...paths).replaceAll('\\', '/');
+const resolvePath = (...paths: string[]) => path.resolve(...paths).replaceAll('\\', '/');
 
 const ROOT_PATH = resolvePath(process.cwd());
-export const DATA_PATH = resolvePath(ROOT_PATH, '/posts/');
 
 export const getMdxBySlug = async (basePath: string, slug: string) => {
   const postFilePath = path.join(process.cwd(), basePath, `/${slug}.mdx`);
@@ -30,7 +29,8 @@ export const getMdxBySlug = async (basePath: string, slug: string) => {
 export const getAllFrontmatters = (basePath: string): FrontmatterWithPath[] => {
   const PATH = resolvePath(ROOT_PATH, basePath);
   const paths = glob.sync(`${PATH}/**/*.mdx`);
-  return paths.map((filePath: string) => {
+
+  return [...paths].reverse().map((filePath: string) => {
     const source = fs.readFileSync(resolvePath(filePath), 'utf8');
     const { data } = matter(source);
     const path = filePath.replace(`${PATH}`, '').replace('.mdx', '');

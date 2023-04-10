@@ -22,7 +22,7 @@ const PostPreview = ({ title, coverImage, date, slug }: Props) => {
           </Link>
         </h3>
         <div className='text-sm text-gray-500'>
-          - <DateFormatter dateString={date} />
+          <DateFormatter dateString={date} />
         </div>
       </div>
     </div>

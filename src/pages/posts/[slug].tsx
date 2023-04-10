@@ -1,36 +1,28 @@
 import { GetStaticPaths, GetStaticProps } from 'next';
 import { NextParsedUrlQuery } from 'next/dist/server/request-meta';
 import { MDXRemote } from 'next-mdx-remote';
-import CodeBlockFilename from '@/components/code-block-filename';
 import MdxLayout from '@/components/layout/mdx-layout';
-import PointBlock from '@/components/point-block';
-import TopAnchorLink from '@/components/top-anchor-link';
+import { components } from '@/components/mdx';
 import { getAllPaths, getMdxBySlug } from '@/lib/mdx';
 import { MdxSource } from '@/types/mds';
+
+type Params = NextParsedUrlQuery & {
+  slug: string;
+};
 
 type Props = {
   mdxSource: MdxSource;
 };
 
-const mdxElements = {
-  TopAnchorLink,
-  CodeBlockFilename,
-  PointBlock,
-};
-
 export default function Page({ mdxSource }: Props) {
   return (
     <MdxLayout meta={mdxSource.scope}>
-      <MDXRemote {...mdxSource} components={mdxElements} />
+      <MDXRemote {...mdxSource} components={components} />
     </MdxLayout>
   );
 }
 
 const BASE_PATH = 'posts';
-
-type Params = NextParsedUrlQuery & {
-  slug: string;
-};
 
 export const getStaticPaths: GetStaticPaths<Params> = async () => {
   return {
