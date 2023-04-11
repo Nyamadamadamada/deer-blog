@@ -23,6 +23,7 @@ export default function MdxLayout({ meta, children }: Props) {
         <title>{title}</title>
         <meta property='og:image' content={process.env.NEXT_PUBLIC_URL + meta.coverImage} />
         <meta name='og:title' content={title} />
+        <meta name='og:description' content={meta.description} />
         <link
           rel='stylesheet'
           href='https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.4.0/styles/a11y-dark.min.css'
