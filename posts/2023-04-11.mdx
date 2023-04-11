@@ -1,0 +1,391 @@
+---
+title: 'マークダウンにReactコンポーネントが書ける！「MDX」でリッチなブログ記事を作る'
+description: 'MDX を使うとマークダウン形式の中で JSX（TSX）が使用できます。本記事では動的ルーティングでMDXページを表示する方法を解説します。'
+coverImage: '/assets/blog/2023-04-11/tumb.png'
+date: '2023-04-11'
+ogImage:
+  url: '/assets/blog/2023-04-11/tumb.png'
+summary:
+  - マークダウンは静的コンテンツのため、ユーザーからのアクションを得られない
+  - MDXは、React コンポーネントをマークアップで直接作成して使用できる
+  - 本記事ではNext.jsでMDXを導入する方法を解説します
+---
+
+次の内容で技術記事を書いています。適切なサムネイルの構図例を具体的に教えて下さい。
+
+title: マークダウンに React コンポーネントが書ける！「MDX」でリッチなブログ記事を作る
+summary:
+
+- マークダウンは静的コンテンツのため、ユーザーからのアクションを得られない
+- MDX は、React コンポーネントをマークアップで直接作成して使用できる
+- 本記事では Next.js で MDX を導入する方法を解説します
+
+## MDX とは
+
+MDX はマークダウン形式の中で JSX（TSX）が使用できます。
+
+<CodeBlockFilename filename={'sample.mdx'} />
+
+```md
+# 見出しだよー
+
+- MDX はマークダウンの中に
+- React コンポーネントを
+- いれられるよ
+
+<CustomButton name={'ほげー'} />
+```
+
+表示結果はこんな感じです。  
+マークダウンと JSX を混在させられるため、ページの表現の幅が格段に上がりますね！  
+（スタイルは適当に CSS を追加しています）
+
+<Image
+  className='mx-auto '
+  src='/assets/blog/2023-04-11/image1.png'
+  alt='説明画像1'
+  width='400'
+  height='500'
+/>
+
+## コード全文
+
+主要なコードを載せます。解説は後ほど行います。
+
+mdx は`/pages/xxx.mdx`のように`pages`直下に置くこともできますし、動的なルーティングにすることもできます。  
+今回は、より汎用性の高い動的ルーティングを実装しました。
+
+<CodeBlockFilename filename={'pages/[slug].tsx'} />
+
+```tsx
+import { GetStaticPaths, GetStaticProps } from 'next';
+import { NextParsedUrlQuery } from 'next/dist/server/request-meta';
+import { MDXRemote } from 'next-mdx-remote';
+import { getAllPaths, getMdxBySlug } from '@/lib/mdx';
+import { MdxSource } from '@/types/mds';
+
+type Props = {
+  mdxSource: MdxSource;
+};
+
+type Params = NextParsedUrlQuery & {
+  slug: string;
+};
+
+export default function Page({ mdxSource }: Props) {
+  return <MDXRemote {...mdxSource} />;
+}
+
+export const getStaticPaths: GetStaticPaths<Params> = async () => {
+  return {
+    paths: getAllPaths('posts'),
+    fallback: false,
+  };
+};
+
+export const getStaticProps: GetStaticProps<Props, Params> = async ({ params }) => {
+  const slug = params!.slug;
+  const mdxSource = await getMdxBySlug('posts', slug);
+
+  return {
+    props: {
+      mdxSource,
+    },
+  };
+};
+```
+
+<br />
+
+<CodeBlockFilename filename={'lib/mdx.ts'} />
+
+```ts
+import fs from 'fs';
+import path from 'path';
+import glob from 'glob';
+import matter from 'gray-matter';
+import { serialize } from 'next-mdx-remote/serialize';
+import rehypeHighlight from 'rehype-highlight';
+import { Frontmatter, FrontmatterWithPath, MdxSource } from '@/types/mds';
+
+const resolvePath = (...paths: string[]) => path.resolve(...paths).replaceAll('\\', '/');
+
+const ROOT_PATH = resolvePath(process.cwd());
+
+export const getMdxBySlug = async (basePath: string, slug: string) => {
+  const postFilePath = path.join(process.cwd(), basePath, `/${slug}.mdx`);
+  const source = fs.readFileSync(postFilePath, 'utf8');
+  const { data, content } = matter(source);
+  const mdxSource = await serialize(content || '', {
+    mdxOptions: {
+      remarkPlugins: [],
+      rehypePlugins: [rehypeHighlight],
+    },
+    parseFrontmatter: true,
+    scope: data,
+  });
+
+  return mdxSource as MdxSource;
+};
+
+export const getAllFrontmatters = (basePath: string): FrontmatterWithPath[] => {
+  const PATH = resolvePath(ROOT_PATH, basePath);
+  const paths = glob.sync(`${PATH}/**/*.mdx`);
+
+  return [...paths].reverse().map((filePath: string) => {
+    const source = fs.readFileSync(resolvePath(filePath), 'utf8');
+    const { data } = matter(source);
+    const path = filePath.replace(`${PATH}`, '').replace('.mdx', '');
+    return {
+      ...(data as Frontmatter),
+      slug: path.replace('/', ''),
+      path: path,
+    } as FrontmatterWithPath;
+  });
+};
+
+export const getAllPaths = (basePath: string) => {
+  const frontmatters = getAllFrontmatters(basePath);
+  return frontmatters.map((frontmatter) => ({
+    params: {
+      slug: frontmatter.path.replace('/', ''),
+    },
+  }));
+};
+```
+
+<br />
+型ファイル。`type Frontmatter`はmdxファイルのメタデータに対応しています。
+
+<CodeBlockFilename filename={'types/mds.ts'} />
+
+```ts // eslint-disable-next-line import/named import {MDXRemoteSerializeResult} from 'next-mdx-remote';
+export type Frontmatter = {
+  slug: string;
+  title: string;
+  date: string;
+  coverImage: string;
+  description: string;
+  ogImage: {
+    url: string;
+  };
+  summary?: string[];
+};
+
+export type FrontmatterWithPath = Frontmatter & {
+  path: string;
+};
+
+export type MdxSource = Omit<MDXRemoteSerializeResult, 'scope'> & {
+  scope: FrontmatterWithPath;
+};
+```
+
+mdx のサンプル
+
+<CodeBlockFilename filename={'sample.mdx'} />
+
+```md
+---
+title: 'マークダウンの中でReactが使える！？大コンポーネント時代「MDX」でブログを作る'
+description: 'マークダウンの中でReactが使える！？大コンポーネント時代「MDX」でブログを作る'
+coverImage: '/assets/blog/2023-04-09/tumb.png'
+date: '2023-04-09T00:00:00.000Z'
+ogImage:
+  url: '/assets/blog/2023-04-09/tumb.png'
+---
+
+## MDX とは
+
+MDX はマークダウン形式の中で JSX（TSX）が使用できます。
+```
+
+## 必要なパッケージ
+
+- **next-mdx-remote**
+  - MDX ファイルを動的に表示するためのプラグイン
+  - GitHub [https://github.com/hashicorp/next-mdx-remote#readme](https://github.com/hashicorp/next-mdx-remote#readme)
+- **gray-matter**
+  - マークダウンにメタ情報を持たせる場合、メタ情報を抽出してくれる
+  - GitHub [https://github.com/jonschlinkert/gray-matter](https://github.com/jonschlinkert/gray-matter)
+
+## 表示までの流れ
+
+1. ページにアクセス
+2. `getStaticPaths`で表示できる全パスを取得
+3. `getStaticProps`で動的なルーティングから MDX ファイルを解析
+4. ページにマークダウンを表示
+
+### 1. ページにアクセス
+
+mdx ファイルはルート直下に置いています。
+外部から呼び出すこともできます。
+
+```md
+.
+├── posts ←（ルート直下に mdx ファイルを配置）
+├── public
+│ 　　 ├── assets
+│ 　　 │ 　　 ├── blog
+│ 　　 │ 　　 └── common
+│ 　　 └── images
+└── src
+　　 ├── components
+　　 │ 　　 ├── layout
+　　 │ 　　 └── mdx
+　　 ├── lib
+　　 ├── pages
+　　 │ 　　 └── posts ←（[slug].tsx はここ）
+　　 ├── styles
+　　 └── types
+```
+
+### 2. `getStaticPaths`で表示できる全パスを取得
+
+まず`posts/`下のファイル名を全て取得します。
+
+```tsx
+const paths = glob.sync(`${PATH}/**/*.mdx`);
+```
+
+`glob`は Node.js のモジュールで、パターンにマッチするファイル名を見つけ出します。
+デフォルトは非同期ですが、`glob.sync`を使うと同期実行できます。
+
+`matter()`は`gray-matter`の関数です。
+ここでは MDX ファイルからメタデータ（title や description など）を取得しています。
+
+```jsx
+const { data } = matter(source);
+```
+
+メタデータ取得後、値を加工してから`[slug].tsx`に返します。
+
+<CodeBlockFilename filename={'types/mds.ts'} />
+
+```ts
+export const getAllFrontmatters = (basePath: string): FrontmatterWithPath[] => {
+  const PATH = resolvePath(ROOT_PATH, basePath);
+  const paths = glob.sync(`${PATH}/**/*.mdx`);
+
+  return [...paths].reverse().map((filePath: string) => {
+    const source = fs.readFileSync(resolvePath(filePath), 'utf8');
+    const { data } = matter(source);
+    const path = filePath.replace(`${PATH}`, '').replace('.mdx', '');
+    return {
+      ...(data as Frontmatter),
+      slug: path.replace('/', ''),
+      path: path,
+    } as FrontmatterWithPath;
+  });
+};
+```
+
+### 3. `getStaticProps`で動的なルーティングから MDX ファイルを解析
+
+`matter()`でメタデータとマークダウンを取得します。
+
+```tsx
+const { data, content } = matter(source);
+```
+
+`serialize()`にマークダウンを渡すとレンダリングした値を返してくれます。
+
+```tsx
+const mdxSource = await serialize(content || '', {
+  mdxOptions: {
+    remarkPlugins: [],
+    rehypePlugins: [rehypeHighlight],
+  },
+  parseFrontmatter: true,
+  scope: data,
+});
+```
+
+<br />
+
+<CodeBlockFilename filename={'types/mds.ts'} />
+
+```ts
+export const getMdxBySlug = async (basePath: string, slug: string) => {
+  const postFilePath = path.join(process.cwd(), basePath, `/${slug}.mdx`);
+  const source = fs.readFileSync(postFilePath, 'utf8');
+  const { data, content } = matter(source);
+  const mdxSource = await serialize(content || '', {
+    mdxOptions: {
+      remarkPlugins: [],
+      rehypePlugins: [rehypeHighlight],
+    },
+    parseFrontmatter: true,
+    scope: data,
+  });
+
+  return mdxSource as MdxSource;
+};
+```
+
+### 4. ページにマークダウンを表示
+
+`MDXRemote`コンポーネントにレンダリング後の値を渡せば、JSX とマークダウンを組み合わせを表示できます。
+
+```tsx
+import { MDXRemote } from 'next-mdx-remote';
+
+export default function Page({ mdxSource }: Props) {
+  return <MDXRemote {...mdxSource} />;
+}
+```
+
+ちなみに、ページを表示するだけなら、`@next/mdx`がおすすめです。
+`pages/`直下に mdx ファイルを置くだけで、マークダウンと JSX を同居させられます。
+
+Next.js 公式サイト
+[https://nextjs.org/docs/advanced-features/using-mdx#nextmdx](https://nextjs.org/docs/advanced-features/using-mdx#nextmdx)
+
+その代わりメタデータを設置することが難しいです。
+
+## React コンポーネントを追加するには
+
+`components`オプションに mdx ファイル内で使用する JSX を追加することで画面に表示することができます。
+
+<CodeBlockFilename filename={'pages/[slug].tsx'} />
+
+```tsx
+const CustomButton = ({ name }: { name: string }) => {
+  return (
+    <button className='bg-blue-500  text-white font-bold py-2 px-4 border-b-4 border-blue-700  rounded'>
+      カスタムボタン：{name}
+    </button>
+  );
+};
+
+const mdxElements = {
+  CustomButton,
+};
+
+export default function Page({ mdxSource }: Props) {
+  return <MDXRemote {...mdxSource} components={mdxElements} />;
+}
+```
+
+## MDX ってほんとに必要？
+
+MDX はマークダウンに JSX を取り入れることで、文章だけで表せないリッチなサイトを作ることができます。
+
+しかし！！  
+ただ記事を書きたいだけなら MDX はオーバースペックです。  
+フロントエンド言語は流行り廃りが激しく１０年後も MDX が使えるかわかりません。
+
+新しい技術に飛びつきたくなりますが、本当に必要かどうかは見定める必要がありそうです。
+
+next-mdx-remote の開発者もこのように述べています。
+
+> 真面目な話、個人または中小企業でブログを作ろうとするならば、通常の html と css を使うことを検討してみてください。シンプルなブログを作るのに、重いフルスタックの javascript フレームワークを使う必要は絶対にないのです。
+
+## 参考
+
+React 公式 MDX の使い方ガイド  
+[https://beta.nextjs.org/docs/guides/mdx#remote-mdx](https://beta.nextjs.org/docs/guides/mdx#remote-mdx)
+
+next-mdx-remote の実装方法を動画で教えてくれます。  
+説明が英語ですが、画面を見たらわかるので特に気になりませんでした。  
+[https://egghead.io/lessons/mdx-render-markdown-with-next-mdx-remote-in-our-next-js-page-component](https://egghead.io/lessons/mdx-render-markdown-with-next-mdx-remote-in-our-next-js-page-component)

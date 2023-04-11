@@ -24,7 +24,7 @@ export default function MdxLayout({ meta, children }: Props) {
         <meta property='og:image' content={meta.ogImage.url} />
         <link
           rel='stylesheet'
-          href='https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.4.0/styles/github-dark.min.css'
+          href='https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.4.0/styles/a11y-dark.min.css'
         ></link>
       </Head>
       <Container>
