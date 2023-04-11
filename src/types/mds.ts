@@ -7,14 +7,12 @@ export type Frontmatter = {
   date: string;
   coverImage: string;
   description: string;
-  ogImage: {
-    url: string;
-  };
   summary?: string[];
 };
 
 export type FrontmatterWithPath = Frontmatter & {
   path: string;
+  ogImagePath: string;
 };
 
 export type MdxSource = Omit<MDXRemoteSerializeResult, 'scope'> & {
