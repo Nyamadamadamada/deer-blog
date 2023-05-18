@@ -1,0 +1,170 @@
+---
+title: 'ごみマップ「WasteWatch」のNext.JS技術'
+description: 'MDX を使うとマークダウン形式の中で JSX（TSX）が使用できます。本記事では動的ルーティングでMDXページを表示する方法を解説します。'
+coverImage: '/assets/blog/2023-05-18/tumb.png'
+date: '2023-05-18'
+summary:
+  - Next.js工夫ポイントを3つ解説
+  - 絶対パスの使い方やuseContextのパフォーマンス最適化など
+  - 筆者が作ったWasteWatch をよかったら見てね
+---
+
+## 「WasteWatch」を作った経緯（読み飛ばして OK）
+
+お笑い芸人のマシンガンズ滝沢さんをご存知ですか？  
+滝沢さんがインタビューで話していて面白いなと思ったのは、お金持ちと庶民では出すごみに違いがあるという話です。
+お金持ちエリアの方がごみの量が圧倒的に少なくて、庶民エリアからは大量の消費物が出てくるそうです。
+
+そこで、都道府県でもごみに特色があるんじゃないかと思い、廃棄物処理状況を可視化するごみマップ「WasteWatch」を作りました。
+
+各県の廃棄物処理状況を可視化するごみマップ「WasteWatch」
+
+[https://waste-watch.vercel.app/](https://waste-watch.vercel.app/)
+
+## はじめに
+
+Next.js は学習難易度が低く、高パフォーマンスを実現できるため、ユーザー体験の高いサービスが作りやすい言語です。
+Next.js を使って実装する中で、工夫した点をまとめます。
+
+## 絶対パスを使う
+
+ファイルの呼び出は絶対パスで呼ぶようにしています。
+絶対パスを使うことで、どのファイルがなんの役割なのか一目でわかります。
+
+相対パスだと、ファイルの役割か分かりずらい
+
+```tsx
+import Info from '../../info';
+import '../styles/globals.css';
+```
+
+↓ 絶対パスにするとわかりやすい！
+
+```tsx
+import Info from '@/components/info';
+import '@/styles/globals.css';
+```
+
+なお、コンポーネントは`src/components/`下に部品ごとに分けています。
+
+```txt
+components/
+      |
+      ├── info/
+      │   ├── InfoContent.tsx
+      │   └── index.ts
+      └── layout/
+          ├── Layout.tsx
+          └── index.ts
+```
+
+ディレクトリ構造は React のベストプラクティスと言われる Bulletproof React を参考にしました。
+
+[https://github.com/alan2207/bulletproof-react](https://github.com/alan2207/bulletproof-react)
+
+### 設定方法
+
+`tsconfig.json`のパス設定で、`@/`エイリアスで絶対パスが使えるようにします。
+
+<CodeBlockFilename filename={'tsconfig.json'} />
+
+```ts
+{
+  "compilerOptions": {
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx"],
+}
+```
+
+絶対パスにしたいファイルと同階層に index.ts を作成し、ファイルを呼び出します。
+エイリアスを default にすることで、呼び出し時にファイル名を省略できます。
+
+<CodeBlockFilename filename={'/src/components/info/index.ts'} />
+
+```ts
+// 絶対パスにしたいファイルをdefaultに設定
+export { default } from './InfoContent';
+```
+
+## useContext と useMemo をセットで使う
+
+useContext はセットしたコンテキスト値をサブスクライブ（定期購読、watch、監視）する React フックです。
+props のバケツリレーが嫌な時、複数のコンポーネントで値を共有したいときに使います。
+
+useContext は強力な hook ですが、`<~~Context.Provider>`を使用しているコンポーネントが再レンダリングするたびに、`useContext`を呼び出しているコンポーネントも余分に再レンダリングしてしまいます。
+
+そこで、useMemo と useCallback を使って再レンダリングを防ぎます。
+
+```tsx
+import { useCallback, useMemo } from 'react';
+
+function MyApp() {
+  const [currentUser, setCurrentUser] = useState(null);
+
+  const login = useCallback((response) => {
+    storeCredentials(response.credentials);
+    setCurrentUser(response.user);
+  }, []);
+
+  const contextValue = useMemo(
+    () => ({
+      currentUser,
+      login,
+    }),
+    [currentUser, login],
+  );
+
+  return (
+    <AuthContext.Provider value={contextValue}>
+      <Page />
+    </AuthContext.Provider>
+  );
+}
+```
+
+React 公式サイトに詳しく記載されています。  
+[useContext](https://react.dev/reference/react/useContext)
+
+## ブラウザのみで動作するライブラリは Dynamic Import を使う
+
+Dynamic Import は Next.js の機能でコンポーネントを動的にインポートできます。
+React でいう`React.lazy`のような役割です。
+
+読み込みを分離することで、パフォーマンス改善に使える他、ブラウザのみで動作するライブラリを使用する際に ssr で読み込まないよう設定できます。
+
+なお、ブラウザのみで動作するライブラリ(slider,leaflet など)を Next で使おうとするとエラーになります。
+
+![説明画像1](/assets/blog/2023-05-18/image1.png)
+
+```tsx
+import dynamic from 'next/dynamic';
+import { useMemo } from 'react';
+
+function Map() {
+  const DynamicMap = useMemo(
+    () =>
+      dynamic(() => import('./DynamicMap'), {
+        loading: () => <p>A map is loading</p>,
+        ssr: false,
+      }),
+    [],
+  );
+  return <DynamicMap />;
+}
+```
+
+Next 公式サイトに詳しく乗ってます。
+[動的インポート](https://nextjs-ja-translation-docs.vercel.app/docs/advanced-features/dynamic-import)
+
+## まとめ
+
+Next.js で開発する際のちょっとしたポイントの解説でした。  
+絶対パスは初めは設定が面倒に思いますが、コード量が増えるにつれて、呼び出しファイルが見やすいと後々助かります。
+
+<br />
+最後に、都道府県ごとのゴミ処理状況がわかる WasteWatch をよかったら見てってください！！（突然の宣伝）
+
+[https://waste-watch.vercel.app/](https://waste-watch.vercel.app/)
