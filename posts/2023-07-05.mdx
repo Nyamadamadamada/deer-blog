@@ -1,0 +1,481 @@
+---
+title: ' データベース論理設計のアンチパターンをまとめる'
+description: '本記事ではエンジニア界隈で評判の「SQL アンチパターン」本をもとに、データベースにおける論理設計のアンチパターンをまとめます。'
+coverImage: '/assets/blog/2023-07-05/tumb.png'
+date: '2023-07-05'
+summary:
+  - データベースの論理設計のアンチパターンを解説
+  - アンチパターンと解決策を具体的に記述します！
+  - 「SQL アンチパターン」本を参考にしています
+---
+
+## はじめに
+
+本記事ではエンジニア界隈で評判の「SQL アンチパターン」本をもとに、データベースにおける論理設計のアンチパターンをまとめます。
+「SQL アンチパターン」本は論理設計、物理設計、クエリ、アプリケーションの４つのカテゴリに分けられ、それぞれ独立しており、わかりやすく説明されているのでおすすめです！
+
+翻訳者の 1 人である和田卓人さんがアンチパターンの概要を説明しているスライドを公開しています。SQL アンチパターンの全容を把握したい時は読んでみてください。
+
+<iframe
+  src='//www.slideshare.net/slideshow/embed_code/key/GBR0cgqEjySJJ4?startSlide=1'
+  width='595'
+  height='485'
+  frameBorder='0'
+  marginWidth='0'
+  marginHeight='0'
+  scrolling='no'
+  allowFullScreen
+/>
+
+Youtube はこちら
+[https://youtu.be/3ARJpYZA9uI](https://youtu.be/3ARJpYZA9uI)
+
+### 参照本「SQL アンチパターン」
+
+この本は DB 設計や SQL 記述の際に避けるべき事柄（＝アンチパターン）を紹介してくれる本です。  
+なぜアンチパターンが発生するのか、その対処法までわかりやすく解説してくれる良書ですので、気になる方はお手に取ってみてください！
+
+[アマゾンのリンク](https://www.amazon.co.jp/SQL%E3%82%A2%E3%83%B3%E3%83%81%E3%83%91%E3%82%BF%E3%83%BC%E3%83%B3-Bill-Karwin/dp/4873115892)
+
+## そのそもアンチパターンってなに？
+
+### 良かれと思って裏目に出てしまうもの
+
+そう、悪気があるわけじゃないんです。
+アンチパターンは「いい手法だ！」と思ってたことが、最終的に好ましくない結果をもたらしてしまう。しかも、さまざまな現場で繰り返されている事象を指します。
+
+アンチパターンは、知っていれば防げることが多いので、積極的に学んでおくことが重要です。
+
+### 論理設計とは
+
+データベースの論理設計とはテーブル構造と関係性を計画し、設計するプロセスです。
+一般的に ER 図の作成や正規化を論理設計の段階で行うことが多いです。
+
+論理設計のアンチパターンは、クエリだけでなく、アプリケーションにも多大な影響を及ぼすので、個人的に「SQL アンチパターン」本の内で最も注意すべきアンチパターンだと思っています。
+
+## 論理設計のアンチパターン
+
+### 1 章. ジェイウォーク（信号無視）
+
+当初、１つの商品に対して１つのアカウントが紐づく実装だったのが、後から「複数のアカウントを商品に紐づけたい！」という要望が出たとします。
+開発当初は１対１の関係だったテーブルを１対多の関係にしたくなった時、どう修正しますか？
+
+#### やりたいこと
+
+１対多を表現したい。
+
+#### アンチパターン
+
+１つの列に複数の値を格納する。
+
+例）product テーブル
+
+<Image
+  className='mx-auto h-auto'
+  src='/assets/blog/2023-07-05/image1.png'
+  alt='説明画像1'
+  width='600'
+  height='600'
+/>
+
+#### 解決策
+
+交差テーブル（中間テーブル）を作成することです。
+交差テーブルは、２つのテーブルを参照する外部キーを持ち、「多対多」の関係をつくるテーブルです。
+
+<Image
+  className='mx-auto h-auto'
+  src='/assets/blog/2023-07-05/image2.png'
+  alt='説明画像2'
+  width='600'
+  height='600'
+/>
+
+交差テーブルはカンマ区切りのリストを部分一致させるよりクエリが書きやすく、検索速度が速くなるため、パフォーマンスが向上します。
+また、列に新しい属性を追加できるため、テーブルの表現の幅が増えます。（例：日付、並び順などを交差テーブルに追加できる。）
+
+### 2 章. ナイーブツリー（素朴な木）
+
+１つのコメントに対して、別のコメントが付き、さらにそのコメントにコメントが寄せられた場合...
+長い連鎖を持つデータをどのように保存したらいいでしょうか。
+
+#### やりたいこと
+
+ツリー構造をテーブルで表現する。
+
+#### アンチパターン
+
+常に親要素に依存し、ツリー状の階層構造を、一つのテーブルで表現する。
+
+例）comments テーブル
+
+<Image
+  className='mx-auto h-auto'
+  src='/assets/blog/2023-07-05/image3.png'
+  alt='説明画像3'
+  width='600'
+  height='600'
+/>
+テーブルはシンプルでいいのですが,,,
+
+クエリが複雑で見づらいです。階層が増えていくにつれ、外部結合も増えていき、どんどん不格好になっていきます。
+
+```sql
+-- コメントの開始から3階層下までのコメントを取得したい時
+SELECT
+    c3.*
+FROM Comments c1
+    LEFT OUTER JOIN Comment c2
+    ON  c2.parent_id = c1.comment_id -- 2階層目
+    LEFT OUTER JOIN Comment c3
+    ON  c3.parent_id = c2.comment_id -- 3階層目
+WHERE
+    comment_id = 100
+;
+```
+
+#### 解決策
+
+**1.再帰クエリ**  
+再帰クエリはナイーブツリー形式で作ったテーブルに対し、再帰（階層が終わるまでループ）的に値を取得することで、パフォーマンスをあげる手法です。
+SQL では`WITH RECURSIVE`を使用します。
+
+```sql
+-- 祖先から全てのコメントを取得する
+WITH RECURSIVE comment_hierarchy AS(
+    SELECT
+        comment_id,
+        parent_id,
+        auther,
+        comment,
+        0 AS LEVEL
+    FROM
+        comments
+    WHERE
+        comment_id = 1 -- 一番上の階層を取得する（先祖コメントID）
+UNION ALL
+  -- 再帰でぐるぐる増える箇所
+SELECT
+    c.comment_id,
+    c.parent_id,
+    c.auther,
+    c.comment,
+    ch.LEVEL + 1
+FROM
+    comments AS c
+    INNER JOIN
+        comment_hierarchy AS ch
+    ON  c.comment_id = ch.parent_id
+)
+SELECT
+    comment_id,
+    parent_id,
+    auther,
+    comment,
+    LEVEL
+FROM
+    comment_hierarchy
+ORDER BY
+    LEVEL,
+    comment_id
+;
+```
+
+**2.閉包テーブル** <br />
+閉包テーブルは、親子関係だけでなく、ツリー全体のパスを格納します。
+シンプルなコメントテーブルに対し、パステーブルを作成し、先祖列と子孫列でそれぞれ外部キーとしてコメント ID を持ちます。
+
+例）TreePath テーブル
+
+<Image
+  className='mx-auto h-auto'
+  src='/assets/blog/2023-07-05/image4.png'
+  alt='説明画像4'
+  width='600'
+  height='600'
+/>
+
+クエリも再帰クエリに比べ、だいぶシンプルになりました。
+
+```sql
+-- 祖先から全てのコメントを取得する
+SELECT
+    c.*
+FROM comment AS c
+    JOIN tree_path AS tp ON c.comment_id = tp.ancestor
+WHERE
+    c.comment_id = 1
+;
+```
+
+### 3 章. ID リクワイアド（とりあえず ID）
+
+とりあえず、全てのテーブルに ID をつけちゃえっていうのがよくないみたいです。
+
+#### アンチパターン
+
+すべてのテーブルに「id」列を用いる。
+
+#### やりたい
+
+主キーの規約を確立する。
+
+#### 解決策
+
+本当に ID が必要なのか考える。
+
+- 複合キーを検討する
+- 状況に応じてわかりやすいカラム名にする
+  - bug_id・product_id など
+- ORM のデフォルトが「id」になっていても、上書きして別の名前を使うことを検討する
+
+### 4 章. キーレスエントリ（外部キー嫌い）
+
+外部キーはつけましょう。
+
+#### アンチパターン
+
+外部キーを使わない。
+
+#### やりたいこと
+
+データベース構造を単純化する。
+値を更新する際、参照先による制約が煩わしい。
+
+#### 解決策
+
+とにかく外部キーは使うこと！
+親テーブルの行の更新を子テーブルの更新と同時に行いたい場合、**カスケード更新**機能というものがあります。
+
+```sql
+-- 親テーブル
+CREATE TABLE Order (
+    order_id INT PRIMARY KEY,
+    order_date DATE,
+    customer_id INT,
+);
+```
+
+カスケード更新を追加した子テーブルの CREATE 文です。
+
+```sql
+-- 子テーブル
+CREATE TABLE OrderDetail (
+    detail_id INT PRIMARY KEY,
+    order_id INT,
+    product_id INT,
+    quantity INT,
+    price DECIMAL(10, 2),
+    FOREIGN KEY (order_id) REFERENCES Order(order_id) ON DELETE CASCADE
+    -- order_idが同じ親の行が削除されれば、OrderDetailの行も一緒に削除される。
+);
+
+```
+
+### 5 章. EAV（エンティティ・アトリビュート・バリュー）
+
+アンケートフォームやメタデータなど、項目名を自由にして保存したい場合があります。
+EAV(Entity-Atribute-Value)は、項目と値を自由に格納できるテーブルが設計です。
+
+<Image
+  className='mx-auto h-auto'
+  src='/assets/blog/2023-07-05/image6.png'
+  alt='説明画像6'
+  width='600'
+  height='600'
+/>
+
+一見、自由度が高く、有用にみえますが、次のようなデメリットがあります。
+
+- SQL のデータ型を使用できない
+- 制約を設定できない
+  - NOT NULL 制約や外部キーを宣言できない
+- 属性名に一貫性がなくなる
+  - 報告日を date_reported、report_date、...と同じ内容で別の属性名に設定できてしまう
+
+#### アンチパターン
+
+EAV する。
+
+#### やりたいこと
+
+高い拡張性をテーブルに持たせたい
+
+#### 解決策
+
+**解決策 1. 考え直す**
+
+- 本当に汎用性が必要なのか
+- 全ての項目が動的なのか
+- 種類があるとすれば、何パターンなのか（上限があるなら、従属テーブルにすればいい）
+
+**解決策 2. NoSQL を使う**
+
+NoSQL はデータ格納形式が様々で非構造化データに適しています。
+非リレーショナルなデータを扱いたい場合、NoSQL を使うことも検討してください。
+
+代表的な NoSQL
+
+- DynamoDB
+- MongoDB
+- Redis
+
+**解決策 3. クラステーブル継承**
+
+クラステーブル継承はテーブルをオブジェクト思考のクラスのように見なして、サブタイプのデータが集まったテーブルを作成する方法です。
+
+```sql
+-- 親テーブル
+CREATE TABLE member (
+    member_id INT PRIMARY KEY,
+    name VARCHAR(255),
+);
+
+-- 生徒テーブル
+CREATE TABLE students (
+    member_id INT PRIMARY KEY,
+    course VARCHAR(255),
+    FOREIGN KEY (member_id) REFERENCES people(member_id)
+);
+
+-- 先生テーブル
+CREATE TABLE teachers (
+    member_id INT PRIMARY KEY,
+    major VARCHAR(255),
+    FOREIGN KEY (member_id) REFERENCES people(member_id)
+);
+
+```
+
+`students`テーブルと`teachers`テーブルは、外部キー制約により１対１の関連が強制され、サブタイプ固有の値を取得できます。
+
+### 6 章. ポリモーフィック関連
+
+バグテーブルにコメントをつけられるとします。
+この時、バグテーブルとコメントテーブルは１対多の関係です。しかし、要望テーブルにもコメントを付けたくなった場合、コメントテーブルはどのように外部キーを設定すればいいでしょうか。
+
+外部キーを複数（ポリモーフィック）の親と設定すると、本来の外部キーの役割である参照整合性が取れなくなってしまいます。
+
+#### アンチパターン
+
+１つのカラムに複数の外部キーをもたせる
+
+#### やりたいこと
+
+複数の親テーブルを参照する
+
+#### 解決策
+
+共通の親テーブルと交差テーブルの作成。
+ポリモーフィック関連では「本来あるべき関連が、逆さまになっている」状態です。
+
+バグテーブルとコメントテーブルとの交差テーブルを作成し、外部キーを定義します。また同じように、要望テーブルとコメントテーブルにも交差テーブルを作成します。
+そうすることで、コメントテーブルに`type`列が不要になり、バグテーブルと要望テーブルではそれぞれ固有のカラムをもたせることができます。
+
+<Image
+  className='mx-auto h-auto'
+  src='/assets/blog/2023-07-05/image8.png'
+  alt='説明画像8'
+  width='600'
+  height='600'
+/>
+
+### 7 章. マルチカラムアトリビュート（複数列属性）
+
+連絡先テーブルには典型的な列があります。
+名前、住所、会社名など。しかし、電話番号は厄介です。自宅、職場、携帯電話、２台目など、、、複数の電話番号を持っている場合はどのように登録したら良いでしょうか。
+
+#### アンチパターン
+
+１つのテーブルに同じ属性の値が複数ある場合、tag1・tag2・tag3 というようにカラムを増やす。
+
+#### やりたいこと
+
+複数の値を持つ属性を格納したい
+
+#### 解決策
+
+従属テーブルを作成する。
+
+```sql
+-- 連絡先テーブル
+CREATE TABLE contacts (
+    contact_id INT PRIMARY KEY,
+    name VARCHAR(255),
+);
+
+-- 電話番号テーブル
+CREATE TABLE phone_numbers (
+    phone_id INT PRIMARY KEY,
+    contact_id INT,
+    phone_number VARCHAR(20),
+    FOREIGN KEY (contact_id) REFERENCES contacts(contact_id) -- 親テーブル（contacts）に紐づける
+);
+```
+
+### 8 章. メタデータトリブル（メタデータ大増殖）
+
+どんなデータベースクエリでもデータ容量が増えるにつれて、パフォーマンスは低下します。クエリの実行速度を劣化させないために、どんなデータ構造が望ましいでしょうか。
+
+#### アンチパターン
+
+- 行数の多いテーブルを、複数のテーブルに分割する。（例：2001_customer,2002_customer のように）
+- 列を分割する。
+
+#### やりたいこと
+
+スケーラビリティを高める。
+データ容量が増えても速度を落とさない。
+
+#### 解決策
+
+**解決策 1.パーティショニング機能を使う**  
+パーティション機能は`PARTITION BY`を用いてテーブルを CREATE することで使用できます。
+
+```sql
+CREATE TABLE sales_history (
+    id INT PRIMARY KEY,
+    product_name VARCHAR(255),
+    sale_date DATE,
+    sale_amount DECIMAL(10,2)
+)
+PARTITION BY RANGE (YEAR(sale_date)) (
+    PARTITION p1 VALUES LESS THAN (2022),
+    PARTITION p2 VALUES LESS THAN (2023),
+    PARTITION p3 VALUES LESS THAN (2024),
+    -- ...
+    PARTITION pn VALUES LESS THAN MAXVALUE
+);
+
+```
+
+SELECT 文
+
+```sql
+-- 2024年のproduct_name="食器A"の年間売上げを取得するクエリ
+SELECT SUM(sale_amount)
+FROM sales_history
+WHERE product_name = '食器A' AND YEAR(sale_date) = 2024;
+```
+
+パーティションを削除する時は、次のコマンドを実行します。
+
+```sql
+ALTER TABLE sales_history DROP PARTITION p2;
+```
+
+**解決策 2. 従属テーブルの導入**
+
+データを強引に１行に収めるのではなく、適切な正規化を行うことで、パフォーマンスが改善できます。
+
+## 終わりに
+
+データベース論理設計のアンチパターンをまとめました。
+論理設計はシステムの要なので、アンチパターンにならないよう気をつけたいです。
+
+ナイーブツリーは過去にやってしまったことがあり、その前にこの本と出会えたらなーと思った次第です。
+
+## 参考リンク
+
+第 16 回 中国地方 DB 勉強会 in 岡山  
+[https://dbstudychugoku.github.io/events/event-016.html](https://dbstudychugoku.github.io/events/event-016.html)

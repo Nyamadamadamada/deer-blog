@@ -6,6 +6,7 @@ import Layout from '@/components/layout/layout';
 import PostBody from '@/components/post-body';
 import PostHeader from '@/components/post-header';
 import PostSummary from '@/components/post-summary';
+import Toc from '@/components/toc';
 import { CMS_NAME } from '@/lib/constants';
 import { FrontmatterWithPath } from '@/types/mds';
 
@@ -31,11 +32,16 @@ export default function MdxLayout({ meta, children }: Props) {
       </Head>
       <Container>
         <Header />
-        <article className='mb-32 p-10 bg-white max-w-3xl mx-auto shadow-sm'>
-          <PostHeader title={meta.title} coverImage={meta.coverImage} date={meta.date} />
-          {meta.summary && <PostSummary summary={meta.summary} />}
-          <PostBody>{children}</PostBody>
-        </article>
+        <div className='flex content-center	'>
+          <article className='mb-32 p-10 bg-white max-w-3xl mx-auto shadow-sm'>
+            <PostHeader title={meta.title} coverImage={meta.coverImage} date={meta.date} />
+            {meta.summary && <PostSummary summary={meta.summary} />}
+            <PostBody>{children}</PostBody>
+          </article>
+          <div className='invisible lg:visible relative'>
+            <Toc />
+          </div>
+        </div>
       </Container>
     </Layout>
   );

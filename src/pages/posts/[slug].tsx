@@ -17,7 +17,9 @@ type Props = {
 export default function Page({ mdxSource }: Props) {
   return (
     <MdxLayout meta={mdxSource.scope}>
-      <MDXRemote {...mdxSource} components={components} />
+      <div className='post'>
+        <MDXRemote {...mdxSource} components={components} />
+      </div>
     </MdxLayout>
   );
 }
